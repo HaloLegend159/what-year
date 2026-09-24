@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Year? — Song guessing game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --plate: #1E3B3F;
+    --plate-deep: #14292C;
+    --glass: #F3E2AE;
+    --glass-ink: #3A2A12;
+    --needle: #D2232A;
+    --brass: #C9A45C;
+    --text: #F4EBD6;
+    --muted: #A9BDB8;
+    --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    background: var(--plate-deep);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 1rem;
+    line-height: 1.5;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .radio {
+    width: 100%;
+    max-width: 560px;
+    background: var(--plate);
+    border-radius: 28px;
+    padding: 28px 24px 20px;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.06), 0 20px 40px rgba(0,0,0,.35);
+  }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  h1, h2 {
+    font-family: var(--display);
+    font-weight: 800;
+    letter-spacing: .01em;
+    margin: 0;
+    line-height: 1;
+  }
+  h1 { font-size: 2.6rem; }
+  h2 { font-size: 2.2rem; }
+  .status { margin: 0; color: var(--muted); display: flex; gap: 14px; font-size: .95rem; }
+  .status b { color: var(--text); font-weight: 600; }
+  p { margin: 0 0 1rem; }
+  .lede { margin-top: 18px; color: var(--muted); max-width: 42ch; }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 22px;
+    background: rgba(255,255,255,.08);
+    color: var(--text);
+  }
+  button:hover { background: rgba(255,255,255,.14); }
+  button.primary { background: var(--brass); color: #231A08; font-weight: 600; }
+  button.primary:hover { background: #D8B46B; }
+  button:disabled { opacity: .4; cursor: default; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--glass); outline-offset: 3px; }
+
+  /* Player */
+  .player { display: flex; align-items: center; gap: 18px; margin-top: 26px; }
+  .knob {
+    width: 72px; height: 72px; padding: 0; flex: none;
+    display: grid; place-items: center;
+    background: radial-gradient(circle at 35% 30%, #E2C382, var(--brass) 55%, #8E7236);
+    color: #231A08;
+    box-shadow: 0 4px 10px rgba(0,0,0,.35);
+  }
+  .knob:hover { background: radial-gradient(circle at 35% 30%, #EBCF92, #D2AE66 55%, #977A3C); }
+  .knob svg { width: 26px; height: 26px; }
+  .progress { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+  #bar { height: 100%; width: 0; background: var(--glass); }
+
+  .readout {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 5.5rem;
+    line-height: .9;
+    text-align: center;
+    margin: 22px 0 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Tuner dial */
+  .dial {
+    position: relative;
+    height: 92px;
+    background: linear-gradient(var(--glass), #E8D397);
+    border-radius: 14px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.25);
+    padding: 0 22px;
+  }
+  .dial:focus-within { outline: 3px solid var(--glass); outline-offset: 4px; }
+  .track { position: relative; height: 100%; }
+  .tick { position: absolute; top: 12px; width: 1px; height: 10px; background: var(--glass-ink); opacity: .45; }
+  .tick.mid { height: 16px; opacity: .7; }
+  .tick.major { height: 24px; width: 2px; opacity: 1; }
+  .label {
+    position: absolute; top: 40px; transform: translateX(-50%);
+    font-family: var(--display); font-weight: 600; font-size: 1rem; color: var(--glass-ink);
+  }
+  .needle {
+    position: absolute; top: 6px; bottom: 6px; width: 3px; margin-left: -1.5px;
+    background: var(--needle); border-radius: 2px;
+    box-shadow: 0 0 6px rgba(210,35,42,.5);
+    transition: left .08s linear;
+    pointer-events: none;
+  }
+  .answer-mark {
+    position: absolute; bottom: 4px; transform: translateX(-50%);
+    background: var(--plate); color: var(--glass);
+    font-family: var(--display); font-weight: 800; font-size: .95rem;
+    padding: 1px 8px; border-radius: 6px;
+    pointer-events: none;
+    animation: drop .45s cubic-bezier(.2,.9,.3,1.3);
+  }
+  @keyframes drop { from { transform: translate(-50%, -30px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+  .dial input[type=range] {
+    position: absolute; top: 0; left: -12px; width: calc(100% + 24px); height: 100%;
+    margin: 0; opacity: 0; cursor: ew-resize;
+    -webkit-appearance: none; appearance: none;
+  }
+  .dial input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 92px; }
+  .dial input[type=range]::-moz-range-thumb { width: 24px; height: 92px; border: 0; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin-top: 16px; }
+
+  /* Reveal */
+  #reveal { margin-top: 22px; display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: start; }
+  #reveal[hidden] { display: none; }
+  #art { width: 96px; height: 96px; border-radius: 10px; object-fit: cover; background: rgba(255,255,255,.08); }
+  .song-title { font-weight: 600; font-size: 1.15rem; margin: 0; }
+  .song-artist { color: var(--muted); margin: 0 0 8px; }
+  .result { margin: 0 0 8px; }
+  .result b { font-family: var(--display); font-size: 1.4rem; font-weight: 800; color: var(--glass); }
+  #reveal a { color: var(--glass); }
+  #reveal .next-row { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+
+  #msg { color: var(--muted); text-align: center; margin: 14px 0 0; min-height: 1.5em; }
+  #end { margin-top: 26px; }
+  .final { font-family: var(--display); font-weight: 800; font-size: 5rem; line-height: 1; color: var(--glass); margin: 10px 0; }
+  footer { margin-top: 28px; font-size: .8rem; color: var(--muted); }
+
+  @media (max-width: 420px) {
+    h1 { font-size: 2.1rem; }
+    .readout { font-size: 4.4rem; }
+    .label { font-size: .85rem; }
+    .dial { padding: 0 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .needle { transition: none; }
+    .answer-mark { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main class="radio">
+  <header>
+    <h1>What year?</h1>
+    <p class="status" id="status" hidden><span>Round <b id="round">1</b> of 10</span><span><b id="score">0</b> pts</span></p>
+  </header>
+
+  <section id="intro">
+    <p class="lede">Listen to a 30-second clip, tune the dial to the year you think the song came out, then lock in your guess. 10 songs, up to 100 points each.</p>
+    <button id="start" class="primary">Start game</button>
+  </section>
+
+  <section id="game" hidden>
+    <div class="player">
+      <button id="play" class="knob" aria-label="Play clip"></button>
+      <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+    </div>
+
+    <div class="readout" id="readout" aria-hidden="true">1990</div>
+
+    <div class="dial">
+      <div class="track" id="track">
+        <div class="needle" id="needle"></div>
+        <input type="range" id="year" min="1960" max="2025" step="1" value="1990" aria-label="Your year guess">
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="minus" aria-label="One year earlier">−1</button>
+      <button id="guess" class="primary">Lock in guess</button>
+      <button id="plus" aria-label="One year later">+1</button>
+    </div>
+
+    <div id="reveal" hidden>
+      <img id="art" alt="">
+      <div>
+        <p class="song-title" id="songTitle"></p>
+        <p class="song-artist" id="songArtist"></p>
+        <p class="result" id="result"></p>
+        <a id="appleLink" href="#" target="_blank" rel="noopener">Listen on Apple Music</a>
+      </div>
+      <div class="next-row"><button id="next" class="primary">Next song</button></div>
+    </div>
+
+    <p id="msg" role="status"></p>
+  </section>
+
+  <section id="end" hidden>
+    <h2>Final score</h2>
+    <p class="final" id="final">0</p>
+    <p id="finalNote"></p>
+    <button id="again" class="primary">Play again</button>
+  </section>
+
+  <footer>Song previews courtesy of Apple Music. Answers use each song's original release year, which may differ from the album shown.</footer>
+</main>
+
+<script>
+// ---- Song list: original release years are set here, not taken from the API,
+// ---- because Apple often lists remaster/compilation dates.
+const SONGS = [
+  ["The Beach Boys", "Good Vibrations", 1966],
+  ["Aretha Franklin", "Respect", 1967],
+  ["The Beatles", "Hey Jude", 1968],
+  ["Creedence Clearwater Revival", "Fortunate Son", 1969],
+  ["Simon & Garfunkel", "Bridge Over Troubled Water", 1970],
+  ["Don McLean", "American Pie", 1971],
+  ["Stevie Wonder", "Superstition", 1972],
+  ["Elton John", "Rocket Man", 1972],
+  ["Queen", "Bohemian Rhapsody", 1975],
+  ["Fleetwood Mac", "Dreams", 1977],
+  ["Bee Gees", "Stayin' Alive", 1977],
+  ["Gloria Gaynor", "I Will Survive", 1978],
+  ["The Clash", "London Calling", 1979],
+  ["AC/DC", "Back in Black", 1980],
+  ["Journey", "Don't Stop Believin'", 1981],
+  ["Toto", "Africa", 1982],
+  ["Cyndi Lauper", "Girls Just Want to Have Fun", 1983],
+  ["Prince", "Purple Rain", 1984],
+  ["Tears for Fears", "Everybody Wants to Rule the World", 1985],
+  ["Bon Jovi", "Livin' on a Prayer", 1986],
+  ["Rick Astley", "Never Gonna Give You Up", 1987],
+  ["Madonna", "Like a Prayer", 1989],
+  ["MC Hammer", "U Can't Touch This", 1990],
+  ["Nirvana", "Smells Like Teen Spirit", 1991],
+  ["Whitney Houston", "I Will Always Love You", 1992],
+  ["Oasis", "Wonderwall", 1995],
+  ["Spice Girls", "Wannabe", 1996],
+  ["Britney Spears", "...Baby One More Time", 1998],
+  ["Backstreet Boys", "I Want It That Way", 1999],
+  ["Eminem", "Lose Yourself", 2002],
+  ["OutKast", "Hey Ya!", 2003],
+  ["Beyoncé", "Crazy in Love", 2003],
+  ["Rihanna", "Umbrella", 2007],
+  ["Lady Gaga", "Poker Face", 2008],
+  ["Adele", "Rolling in the Deep", 2010],
+  ["Gotye", "Somebody That I Used to Know", 2011],
+  ["Pharrell Williams", "Happy", 2013],
+  ["Mark Ronson", "Uptown Funk", 2014],
+  ["Ed Sheeran", "Shape of You", 2017],
+  ["Billie Eilish", "bad guy", 2019],
+  ["The Weeknd", "Blinding Lights", 2019],
+  ["Olivia Rodrigo", "drivers license", 2021],
+  ["Harry Styles", "As It Was", 2022],
+  ["Miley Cyrus", "Flowers", 2023],
+];
+
+const ROUNDS = 10;
+const MIN_YEAR = 1960, MAX_YEAR = 2025, START_YEAR = 1990;
+
+const $ = id => document.getElementById(id);
+const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+
+let pool = [], idx = 0, round = 0, score = 0, current = null, nextSong = null;
+const audio = new Audio();
+
+// ---- Dial ----
+const pct = y => ((y - MIN_YEAR) / (MAX_YEAR - MIN_YEAR)) * 100;
+(function buildScale() {
+  const track = $("track");
+  for (let y = MIN_YEAR; y <= MAX_YEAR; y++) {
+    const t = document.createElement("span");
+    t.className = "tick" + (y % 10 === 0 ? " major" : y % 5 === 0 ? " mid" : "");
+    t.style.left = pct(y) + "%";
+    track.insertBefore(t, $("needle"));
+    if (y % 10 === 0) {
+      const l = document.createElement("span");
+      l.className = "label";
+      l.textContent = y;
+      l.style.left = pct(y) + "%";
+      track.insertBefore(l, $("needle"));
+    }
+  }
+})();
+
+function setYear(y) {
+  y = Math.max(MIN_YEAR, Math.min(MAX_YEAR, y));
+  $("year").value = y;
+  $("readout").textContent = y;
+  $("needle").style.left = pct(y) + "%";
+}
+$("year").addEventListener("input", e => setYear(+e.target.value));
+$("minus").onclick = () => setYear(+$("year").value - 1);
+$("plus").onclick = () => setYear(+$("year").value + 1);
+
+// ---- iTunes Search API via JSONP (works from static hosting like GitHub Pages) ----
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = "itc_" + Math.random().toString(36).slice(2);
+    const s = document.createElement("script");
+    const timer = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, 8000);
+    function cleanup() { clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = data => { cleanup(); resolve(data); };
+    s.onerror = () => { cleanup(); reject(new Error("network")); };
+    s.src = url + "&callback=" + cb;
+    document.head.appendChild(s);
+  });
+}
+
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
+
+function pickResult(results, artist, title) {
+  const a = norm(artist).slice(0, 6), t = norm(title).slice(0, 8);
+  const byArtist = results.filter(r => r.previewUrl && norm(r.artistName || "").includes(a));
+  return byArtist.find(r => norm(r.trackName || "").startsWith(t)) || byArtist[0] || null;
+}
+
+async function fetchNextSong() {
+  while (idx < pool.length) {
+    const [artist, title, year] = pool[idx++];
+    try {
+      const url = "https://itunes.apple.com/search?media=music&entity=song&limit=10&country=US&term=" +
+        encodeURIComponent(artist + " " + title);
+      const data = await jsonp(url);
+      const r = pickResult(data.results || [], artist, title);
+      if (r) {
+        return {
+          year, artist: r.artistName, title: r.trackName,
+          preview: r.previewUrl, link: r.trackViewUrl,
+          art: (r.artworkUrl100 || "").replace("100x100", "300x300"),
+        };
+      }
+    } catch (e) { /* skip this song and try the next one */ }
+  }
+  return null;
+}
+
+// ---- Game flow ----
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+function setPlayIcon(playing) {
+  $("play").innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+  $("play").setAttribute("aria-label", playing ? "Pause clip" : "Play clip");
+}
+setPlayIcon(false);
+
+$("play").onclick = () => {
+  if (!audio.src) return;
+  if (audio.paused) audio.play().catch(() => { $("msg").textContent = "Tap play again to start the clip."; });
+  else audio.pause();
+};
+audio.addEventListener("play", () => setPlayIcon(true));
+audio.addEventListener("pause", () => setPlayIcon(false));
+audio.addEventListener("ended", () => setPlayIcon(false));
+audio.addEventListener("timeupdate", () => {
+  $("bar").style.width = audio.duration ? (audio.currentTime / audio.duration) * 100 + "%" : "0";
+});
+
+function setGuessing(on) {
+  ["year", "minus", "plus", "guess"].forEach(id => $(id).disabled = !on);
+}
+
+async function startRound() {
+  audio.pause();
+  $("bar").style.width = "0";
+  $("reveal").hidden = true;
+  const mark = document.querySelector(".answer-mark");
+  if (mark) mark.remove();
+  setYear(START_YEAR);
+  setGuessing(false);
+  $("play").disabled = true;
+  $("msg").textContent = "Tuning in…";
+
+  current = await (nextSong || fetchNextSong());
+  nextSong = null;
+
+  if (!current) {
+    $("msg").textContent = "";
+    return endGame(round === 0
+      ? "Couldn't reach Apple's song previews. Check your connection and try again."
+      : "Ran out of playable songs early.");
+  }
+
+  round++;
+  $("round").textContent = round;
+  $("msg").textContent = "";
+  audio.src = current.preview;
+  $("play").disabled = false;
+  setGuessing(true);
+  audio.play().catch(() => { $("msg").textContent = "Press play to hear the clip."; });
+
+  if (round < ROUNDS) nextSong = fetchNextSong(); // preload the next one
+}
+
+$("guess").onclick = () => {
+  const guess = +$("year").value;
+  const diff = Math.abs(guess - current.year);
+  const points = Math.max(0, 100 - diff * 10);
+  score += points;
+  $("score").textContent = score;
+  setGuessing(false);
+
+  const mark = document.createElement("div");
+  mark.className = "answer-mark";
+  mark.textContent = current.year;
+  mark.style.left = pct(current.year) + "%";
+  $("track").appendChild(mark);
+
+  $("art").src = current.art;
+  $("art").alt = "Cover art for " + current.title;
+  $("songTitle").textContent = current.title;
+  $("songArtist").textContent = current.artist;
+  $("appleLink").href = current.link;
+  const verdict = diff === 0 ? "Exact year!" : `Off by ${diff} year${diff > 1 ? "s" : ""}.`;
+  $("result").innerHTML = `${current.year}. ${verdict} <b>+${points}</b>`;
+  $("next").textContent = round >= ROUNDS ? "See final score" : "Next song";
+  $("reveal").hidden = false;
+  $("next").focus();
+};
+
+$("next").onclick = () => round >= ROUNDS ? endGame() : startRound();
+
+function endGame(note) {
+  audio.pause();
+  $("game").hidden = true;
+  $("end").hidden = false;
+  $("final").textContent = score;
+  const max = Math.max(round, 1) * 100;
+  $("finalNote").textContent = note || (
+    score >= max * 0.8 ? "You clearly grew up with a radio on." :
+    score >= max * 0.5 ? "Solid ear. A few decades tripped you up." :
+    "Tough round. The dial remembers nothing, but you can try again.");
+  $("again").focus();
+}
+
+function newGame() {
+  pool = shuffle(SONGS); idx = 0; round = 0; score = 0; nextSong = null;
+  $("score").textContent = 0;
+  $("intro").hidden = true;
+  $("end").hidden = true;
+  $("game").hidden = false;
+  $("status").hidden = false;
+  startRound();
+}
+$("start").onclick = newGame;
+$("again").onclick = newGame;
+setYear(START_YEAR);
+</script>
+</body>
+</html>
